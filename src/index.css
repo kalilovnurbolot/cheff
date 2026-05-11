@@ -1,0 +1,537 @@
+@import "tailwindcss";
+
+/* ── Design tokens ───────────────────────────────────────────── */
+:root {
+  --orange:      #FF6B35;
+  --orange-dark: #e55a26;
+  --orange-glow: rgba(255,107,53,0.25);
+  --red:         #FF3040;
+  --bg:          #000000;
+  --bg2:         #0a0a0a;
+  --bg3:         #111111;
+  --bg4:         #1c1c1c;
+  --border:      #262626;
+  --text:        #fafafa;
+  --text2:       #a8a8a8;
+  --text3:       #737373;
+  --green:       #4ade80;
+  --blue:        #3897f0;
+  --safe-top:    env(safe-area-inset-top,    0px);
+  --safe-bot:    env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Reset ───────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+  touch-action: pan-y;
+}
+
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+#root {
+  height: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  position: relative;
+  background: var(--bg);
+}
+
+/* ── Scroll ──────────────────────────────────────────────────── */
+.scroll-area {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  overscroll-behavior-y: contain;
+}
+.scroll-area::-webkit-scrollbar { display: none; }
+
+/* ── Bottom Nav ──────────────────────────────────────────────── */
+.bottom-nav {
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: rgba(0,0,0,0.88);
+  border-top: 0.5px solid var(--border);
+  padding-bottom: var(--safe-bot);
+}
+
+/* ── Layout row (content + right panel) ──────────────────────── */
+.layout-content-row {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.layout-main { flex: 1; }
+
+/* Right panel hidden on mobile */
+.right-panel { display: none; }
+
+/* ── Desktop sidebar (≥ 768px) ───────────────────────────────── */
+@media (min-width: 768px) {
+  body { padding-left: 72px; }
+
+  #root { max-width: 430px; margin: 0 auto; }
+
+  .bottom-nav {
+    top: 0 !important;
+    bottom: auto !important;
+    left: 0 !important;
+    width: 72px !important;
+    height: 100dvh !important;
+    border-top: none !important;
+    border-right: 0.5px solid var(--border) !important;
+    padding-bottom: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .bottom-nav-inner {
+    flex-direction: column !important;
+    max-width: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    flex: 1 !important;
+    margin: 0 !important;
+    padding: 12px 0 !important;
+    justify-content: center !important;
+    gap: 4px;
+  }
+
+  .nav-item-label { display: none !important; }
+
+  /* убираем flex:1 с пунктов — иначе они растягиваются на всю высоту */
+  .bottom-nav-inner > a { flex: none !important; }
+
+  .layout-main { padding-bottom: 0 !important; }
+}
+
+/* ── Three-column layout (≥ 960px) ──────────────────────────── */
+@media (min-width: 960px) {
+  #root { max-width: 820px; margin: 0 auto; }
+
+  .layout-main { padding-right: 48px !important; }
+
+  .right-panel {
+    display: block;
+    width: 298px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding: 56px 0 20px 48px;
+    border-left: 0.5px solid var(--border);
+  }
+  .right-panel::-webkit-scrollbar { display: none; }
+}
+
+/* ── Wide sidebar (≥ 1264px) — hover раскрывает лейблы ──────── */
+@media (min-width: 1264px) {
+  body { padding-left: 72px; }
+
+  .bottom-nav {
+    width: 72px !important;
+    transition: width 0.25s ease !important;
+    overflow: hidden !important;
+  }
+  .bottom-nav:hover { width: 245px !important; }
+
+  .bottom-nav-inner {
+    padding: 12px 8px !important;
+    align-items: flex-start !important;
+  }
+
+  .bottom-nav-inner > a { flex: none !important; }
+
+  .nav-item-label {
+    display: block !important;
+    opacity: 0 !important;
+    white-space: nowrap !important;
+    transition: opacity 0.15s ease !important;
+    font-size: 15px !important;
+    margin-top: 0 !important;
+  }
+  .bottom-nav:hover .nav-item-label { opacity: 1 !important; }
+
+  .nav-sidebar-item {
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    gap: 14px !important;
+    padding: 12px 16px !important;
+    border-radius: 12px !important;
+    width: 100% !important;
+  }
+}
+
+/* ── Install button ──────────────────────────────────────────── */
+.install-btn {
+  position: fixed;
+  bottom: calc(49px + var(--safe-bot) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 51;
+  background: rgba(15,15,15,0.92);
+  backdrop-filter: blur(16px);
+  border: 0.5px solid var(--orange);
+  border-radius: 24px;
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--orange);
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 4px 20px rgba(255,107,53,0.25);
+  white-space: nowrap;
+}
+@media (min-width: 768px) {
+  .install-btn {
+    position: static;
+    bottom: auto;
+    left: auto;
+    transform: none;
+    border-radius: 12px;
+    width: 100%;
+    justify-content: center;
+    margin: auto 0 12px;
+  }
+}
+
+/* ── Story ring ──────────────────────────────────────────────── */
+.story-ring {
+  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+  padding: 2px;
+  border-radius: 50%;
+}
+.story-ring-seen {
+  background: var(--border);
+  padding: 2px;
+  border-radius: 50%;
+}
+
+/* ── Gradient text ───────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #FF6B35, #FF3CAC);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Bottom Sheet ────────────────────────────────────────────── */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  animation: overlayIn 0.25s ease;
+}
+.sheet {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  width: 100%;
+  max-width: 430px;
+  background: var(--bg3);
+  border-radius: 16px 16px 0 0;
+  z-index: 201;
+  max-height: 90dvh;
+  display: flex;
+  flex-direction: column;
+  animation: sheetUp 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  padding-bottom: var(--safe-bot);
+}
+.sheet-handle {
+  width: 36px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 12px auto 0;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes sheetUp {
+  from { transform: translateX(-50%) translateY(100%); }
+  to   { transform: translateX(-50%) translateY(0); }
+}
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Heart Burst ─────────────────────────────────────────────── */
+.heart-burst-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+}
+.heart-burst {
+  animation: heartBurst 0.65s cubic-bezier(0.17, 0.89, 0.32, 1.49) forwards;
+}
+@keyframes heartBurst {
+  0%   { transform: scale(0); opacity: 1; }
+  40%  { transform: scale(1.3); opacity: 1; }
+  70%  { transform: scale(1.1); opacity: 0.9; }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+/* ── Like button pop ─────────────────────────────────────────── */
+@keyframes likePop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.25); }
+  70%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+.like-pop { animation: likePop 0.35s cubic-bezier(0.17, 0.89, 0.32, 1.49); }
+
+/* ── Timer pulse ─────────────────────────────────────────────── */
+@keyframes timerPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+.timer-pulse { animation: timerPulse 1s ease-in-out infinite; }
+
+/* ── Toast ───────────────────────────────────────────────────── */
+.toast-wrap {
+  position: fixed;
+  top: calc(var(--safe-top) + 60px);
+  left: 50%; transform: translateX(-50%);
+  z-index: 999;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 380px;
+  padding: 0 16px;
+}
+.toast {
+  background: rgba(50,50,50,0.95);
+  backdrop-filter: blur(12px);
+  color: var(--text);
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  width: 100%;
+  animation: toastIn 0.25s ease, toastOut 0.25s ease 2.5s forwards;
+  border: 0.5px solid rgba(255,255,255,0.1);
+}
+.toast.success { border-color: rgba(74,222,128,0.4); }
+.toast.error   { border-color: rgba(255,48,64,0.4); }
+@keyframes toastIn  { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes toastOut { from { opacity: 1; } to { opacity: 0; pointer-events: none; } }
+
+/* ── Fade in ─────────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeUp 0.3s ease forwards; }
+
+/* ── Star rating ─────────────────────────────────────────────── */
+.star { font-size: 18px; cursor: pointer; transition: transform 0.15s; }
+.star:hover { transform: scale(1.2); }
+
+/* ── Recipe card ─────────────────────────────────────────────── */
+.recipe-card { transition: transform 0.15s ease; cursor: pointer; }
+.recipe-card:active { transform: scale(0.97); }
+
+/* ── Tag pill ────────────────────────────────────────────────── */
+.tag {
+  background: var(--bg4);
+  border: 0.5px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 13px;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.tag.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+
+/* ── Input / Textarea ────────────────────────────────────────── */
+input, textarea, select {
+  outline: none;
+  background: var(--bg4);
+  color: var(--text);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 13px 16px;
+  font-size: 15px;
+  width: 100%;
+  font-family: inherit;
+  transition: border-color 0.18s;
+  -webkit-appearance: none;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--orange); }
+input::placeholder, textarea::placeholder { color: var(--text3); }
+
+/* ── Button primary ──────────────────────────────────────────── */
+.btn-primary {
+  background: var(--orange);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 24px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  letter-spacing: 0.2px;
+  transition: opacity 0.15s;
+  font-family: inherit;
+}
+.btn-primary:active { opacity: 0.85; }
+.btn-primary:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Ghost button ────────────────────────────────────────────── */
+.btn-ghost {
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 10px;
+  transition: background 0.15s;
+}
+.btn-ghost:active { background: var(--bg4); }
+
+/* ── Verified badge ──────────────────────────────────────────── */
+.verified {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px; height: 14px;
+  background: var(--blue);
+  border-radius: 50%;
+  font-size: 8px;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* ── 2GIS button ─────────────────────────────────────────────── */
+.btn-2gis {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1AA34A;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.btn-2gis:active { opacity: 0.85; }
+
+/* ── Step dot indicator ──────────────────────────────────────── */
+.step-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: all 0.3s;
+}
+.step-dot.active { background: var(--orange); width: 20px; border-radius: 4px; }
+
+/* ── Notification dot ────────────────────────────────────────── */
+.notif-dot {
+  position: absolute;
+  top: 0; right: 0;
+  width: 8px; height: 8px;
+  background: var(--red);
+  border-radius: 50%;
+  border: 1.5px solid var(--bg);
+}
+
+/* ── Progress bar ────────────────────────────────────────────── */
+.progress-bar {
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  overflow: hidden;
+  flex: 1;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: rgba(255,255,255,0.85);
+  border-radius: 1px;
+  transition: width 0.05s linear;
+}
+
+/* ── Story full screen ───────────────────────────────────────── */
+.story-viewer {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--safe-top);
+}
+
+/* ── Location card ───────────────────────────────────────────── */
+.location-card {
+  background: var(--bg4);
+  border: 0.5px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Comment bubble ──────────────────────────────────────────── */
+.comment-like-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text3);
+  font-size: 12px;
+  padding: 2px 0;
+}
+.comment-like-btn.liked { color: var(--red); }
+
+/* ── Action icon ─────────────────────────────────────────────── */
+.action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  color: var(--text);
+  transition: opacity 0.15s;
+}
+.action-btn:active { opacity: 0.6; }
