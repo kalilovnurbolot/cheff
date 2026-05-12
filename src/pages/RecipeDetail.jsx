@@ -3,10 +3,11 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, Heart, Share2, Bookmark, Clock, ChefHat, Users,
   Play, Pause, RotateCcw, CheckCircle2, Circle, Flame,
-  Monitor, MessageCircle, Star, MapPin
+  Monitor, MessageCircle, Star, MapPin, MoreHorizontal, Pencil, Trash2
 } from 'lucide-react'
-import { getRecipe, toggleLike, toggleSave, getLikeStatus, getSaveStatus } from '../lib/api'
-import { cacheGet, cacheSet } from '../lib/offlineCache'
+import { getRecipe, toggleLike, toggleSave, getLikeStatus, getSaveStatus, deleteRecipe } from '../lib/api'
+import { cacheGet, cacheSet, addToOfflineSaved, removeFromOfflineSaved } from '../lib/offlineCache'
+import { withSync } from '../lib/syncQueue'
 import { useRealtimeQuery } from '../hooks/useRealtimeQuery'
 import { getComments } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
@@ -143,6 +144,7 @@ export default function RecipeDetail() {
   const [activeTab,  setActiveTab]  = useState(sp.get('cook') === '1' ? 'cook' : 'info')
   const [showComments, setShowComments] = useState(false)
   const [myRating,   setMyRating]   = useState(0)
+  const [showMenu,   setShowMenu]   = useState(false)
 
   useEffect(() => {
     let active = true
@@ -182,8 +184,10 @@ export default function RecipeDetail() {
     if (!userId) { toast('Войдите, чтобы поставить лайк', 'error'); return }
     const next = !liked
     setLiked(next)
-    try { await toggleLike(recipe.id, userId) }
-    catch { setLiked(!next) }
+    try {
+      await withSync('toggleLike', { recipeId: recipe.id, userId }, () => toggleLike(recipe.id, userId))
+      if (!navigator.onLine) toast(next ? 'Лайк сохранён — отправим когда появится сеть' : 'Отменено офлайн', 'success')
+    } catch { setLiked(!next) }
   }
 
   async function doToggleSave() {
@@ -191,10 +195,26 @@ export default function RecipeDetail() {
     const next = !saved
     setSaved(next)
     try {
-      await toggleSave(recipe.id, userId)
-      toast(next ? 'Сохранено ✓' : 'Удалено из сохранённых', next ? 'success' : undefined)
+      await withSync('toggleSave', { recipeId: recipe.id, userId }, () => toggleSave(recipe.id, userId))
+      if (next) {
+        await addToOfflineSaved(recipe)
+        toast(navigator.onLine ? 'Сохранено ✓ — доступно офлайн' : 'Сохранено офлайн — синхронизируем позже', 'success')
+      } else {
+        await removeFromOfflineSaved(recipe.id)
+        toast('Удалено из сохранённых')
+      }
     } catch {
       setSaved(!next)
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm('Удалить рецепт? Это действие необратимо.')) return
+    try {
+      await deleteRecipe(id)
+      navigate('/profile', { replace: true })
+    } catch (e) {
+      toast('Ошибка при удалении: ' + e.message, 'error')
     }
   }
 
@@ -238,6 +258,11 @@ export default function RecipeDetail() {
           </button>
 
           <div style={{ position: 'absolute', top: `calc(var(--safe-top) + 12px)`, right: 14, display: 'flex', gap: 8 }}>
+            {author.id === userId && (
+              <button onClick={() => setShowMenu(true)} style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <MoreHorizontal size={18} />
+              </button>
+            )}
             <button onClick={handleShare} style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
               <Share2 size={18} />
             </button>
@@ -398,6 +423,36 @@ export default function RecipeDetail() {
           recipeAuthorId={author.id}
           onClose={() => setShowComments(false)}
         />
+      )}
+
+      {showMenu && (
+        <div onClick={() => setShowMenu(false)} style={{
+          position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)'
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            background: 'var(--bg2)', borderRadius: '20px 20px 0 0',
+            padding: '8px 0 calc(var(--safe-bot) + 8px)'
+          }}>
+            <div style={{ width: 36, height: 4, background: 'var(--border)', borderRadius: 2, margin: '8px auto 16px' }} />
+            {[
+              { icon: <Pencil size={18} />, label: 'Редактировать', action: () => navigate('/recipe/' + id + '/edit'), color: 'var(--text)' },
+              { icon: <Trash2  size={18} />, label: 'Удалить',        action: handleDelete,                              color: 'var(--red)'  },
+            ].map(({ icon, label, action, color }) => (
+              <button key={label} onClick={action} style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+                padding: '16px 24px', background: 'none', border: 'none', cursor: 'pointer',
+                color, fontSize: 16, fontWeight: 600, fontFamily: 'inherit'
+              }}>
+                {icon} {label}
+              </button>
+            ))}
+            <button onClick={() => setShowMenu(false)} style={{
+              width: '100%', padding: '16px 24px', background: 'none', border: 'none',
+              cursor: 'pointer', color: 'var(--text3)', fontSize: 16, fontFamily: 'inherit'
+            }}>Отмена</button>
+          </div>
+        </div>
       )}
     </>
   )

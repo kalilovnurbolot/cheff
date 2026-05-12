@@ -3,6 +3,34 @@ import { supabase } from './supabase'
 // ── helpers ───────────────────────────────────────────────────────────────────
 function raise(error) { if (error) throw new Error(error.message) }
 
+// ── follows ───────────────────────────────────────────────────────────────────
+export async function getFollowStatus(followerId, followingId) {
+  if (!followerId || !followingId) return false
+  const { data } = await supabase
+    .from('follows')
+    .select('id')
+    .eq('follower_id', followerId)
+    .eq('following_id', followingId)
+    .maybeSingle()
+  return !!data
+}
+
+export async function toggleFollow(followerId, followingId) {
+  const isFollowing = await getFollowStatus(followerId, followingId)
+
+  if (isFollowing) {
+    const { error } = await supabase.from('follows').delete()
+      .eq('follower_id', followerId).eq('following_id', followingId)
+    raise(error)
+  } else {
+    const { error } = await supabase.from('follows')
+      .insert({ follower_id: followerId, following_id: followingId })
+    raise(error)
+  }
+
+  return !isFollowing
+}
+
 // ── profiles ─────────────────────────────────────────────────────────────────
 export async function upsertProfile({ google_id, username, full_name, avatar_url, email, bio = '' }) {
   const { data, error } = await supabase
@@ -70,6 +98,22 @@ export async function getRecipe(id) {
     `)
     .eq('id', id)
     .maybeSingle()
+  raise(error)
+  return data
+}
+
+export async function deleteRecipe(id) {
+  const { error } = await supabase.from('recipes').delete().eq('id', id)
+  raise(error)
+}
+
+export async function updateRecipe(id, updates) {
+  const { data, error } = await supabase
+    .from('recipes')
+    .update(updates)
+    .eq('id', id)
+    .select('*')
+    .single()
   raise(error)
   return data
 }

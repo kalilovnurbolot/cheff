@@ -1,20 +1,26 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Grid3X3, Heart, UserPlus, UserCheck } from 'lucide-react'
-import { getProfileById, getUserRecipes, getLikedRecipes } from '../lib/api'
+import { getProfileById, getUserRecipes, getLikedRecipes, getFollowStatus, toggleFollow } from '../lib/api'
+import { withSync } from '../lib/syncQueue'
+
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import Layout from '../components/Layout'
 
 export default function UserProfile() {
   const { id }    = useParams()
   const navigate  = useNavigate()
   const { user }  = useAuth()
+  const toast     = useToast()
 
-  const [profile,   setProfile]   = useState(null)
-  const [recipes,   setRecipes]   = useState([])
-  const [liked,     setLiked]     = useState([])
-  const [tab,       setTab]       = useState('recipes')
-  const [loading,   setLoading]   = useState(true)
+  const [profile,     setProfile]     = useState(null)
+  const [recipes,     setRecipes]     = useState([])
+  const [liked,       setLiked]       = useState([])
+  const [tab,         setTab]         = useState('recipes')
+  const [loading,     setLoading]     = useState(true)
+  const [following,   setFollowing]   = useState(false)
+  const [followLoading, setFollowLoading] = useState(false)
 
   const isOwnProfile = user?.supabaseId === id
 
@@ -27,15 +33,46 @@ export default function UserProfile() {
       getProfileById(id),
       getUserRecipes(id),
       getLikedRecipes(id),
-    ]).then(([prof, recs, lks]) => {
+      getFollowStatus(user?.supabaseId, id),
+    ]).then(([prof, recs, lks, isFollowing]) => {
       if (!active) return
       setProfile(prof)
       setRecipes(recs || [])
       setLiked(lks || [])
+      setFollowing(isFollowing)
     }).finally(() => { if (active) setLoading(false) })
 
     return () => { active = false }
   }, [id])
+
+  async function handleFollow() {
+    if (!user?.supabaseId) { toast('Войдите чтобы подписаться', 'error'); return }
+    setFollowLoading(true)
+    const next = !following
+    setFollowing(next)
+    try {
+      await withSync(
+        'toggleFollow',
+        { followerId: user.supabaseId, followingId: id },
+        () => toggleFollow(user.supabaseId, id)
+      )
+      if (navigator.onLine) {
+        const fresh = await getProfileById(id)
+        if (fresh) setProfile(fresh)
+      }
+      toast(
+        navigator.onLine
+          ? (next ? 'Вы подписались' : 'Вы отписались')
+          : 'Офлайн — синхронизируем когда появится сеть',
+        'success'
+      )
+    } catch (e) {
+      setFollowing(!next)
+      toast('Ошибка: ' + (e.message || 'нет доступа'), 'error')
+    } finally {
+      setFollowLoading(false)
+    }
+  }
 
   if (loading) return (
     <div style={{ height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: 'var(--text3)' }}>
@@ -109,14 +146,18 @@ export default function UserProfile() {
         </div>
 
         {/* Follow button */}
-        <button style={{
+        <button onClick={handleFollow} disabled={followLoading} style={{
           marginTop: 14, width: '100%',
-          background: 'var(--orange)', border: 'none', borderRadius: 10,
-          padding: '10px 0', fontSize: 14, fontWeight: 700,
-          color: '#fff', cursor: 'pointer', fontFamily: 'inherit',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+          background: following ? 'var(--bg4)' : 'var(--orange)',
+          border: following ? '0.5px solid var(--border)' : 'none',
+          borderRadius: 10, padding: '10px 0', fontSize: 14, fontWeight: 700,
+          color: following ? 'var(--text)' : '#fff',
+          cursor: followLoading ? 'default' : 'pointer',
+          fontFamily: 'inherit', opacity: followLoading ? 0.6 : 1,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          transition: 'all 0.2s',
         }}>
-          <UserPlus size={15} /> Подписаться
+          {following ? <><UserCheck size={15} /> Вы подписаны</> : <><UserPlus size={15} /> Подписаться</>}
         </button>
       </div>
 

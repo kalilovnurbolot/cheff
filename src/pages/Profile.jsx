@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Settings, Grid3X3, Heart, Bookmark, Download, WifiOff, MapPin, Edit3, Plus, Check, LogOut } from 'lucide-react'
-import { getUserRecipes, getSavedRecipes, getLikedRecipes, getUserLocation, upsertLocation, getProfile, updateProfile } from '../lib/api'
+import { Settings, Grid3X3, Heart, Bookmark, Download, WifiOff, MapPin, Edit3, Plus, Check, LogOut, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { getUserRecipes, getSavedRecipes, getLikedRecipes, getUserLocation, upsertLocation, getProfile, updateProfile, deleteRecipe } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import Layout from '../components/Layout'
@@ -26,6 +26,8 @@ export default function Profile() {
   const [bio,        setBio]        = useState('')
   const [showLocPicker, setShowLocPicker] = useState(false)
   const [locDraft,   setLocDraft]   = useState(null)
+  const [menuId,     setMenuId]     = useState(null)
+  const menuRef = useRef(null)
 
   useEffect(() => {
     if (!userId) return
@@ -58,6 +60,18 @@ export default function Profile() {
       toast('Сохранено ✓', 'success')
     } catch {
       toast('Ошибка при сохранении', 'error')
+    }
+  }
+
+  async function handleDelete(recipeId) {
+    if (!confirm('Удалить рецепт? Это действие необратимо.')) return
+    try {
+      await deleteRecipe(recipeId)
+      setMyRecipes(p => p.filter(r => r.id !== recipeId))
+      setMenuId(null)
+      toast('Рецепт удалён', 'success')
+    } catch {
+      toast('Ошибка при удалении', 'error')
     }
   }
 
@@ -246,12 +260,53 @@ export default function Profile() {
         ))}
       </div>
 
+      {menuId && (
+        <div onClick={() => setMenuId(null)} style={{
+          position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)'
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            background: 'var(--bg2)', borderRadius: '20px 20px 0 0',
+            padding: '8px 0 calc(var(--safe-bot) + 8px)'
+          }}>
+            <div style={{ width: 36, height: 4, background: 'var(--border)', borderRadius: 2, margin: '8px auto 16px' }} />
+            {[
+              { icon: <Pencil size={18} />, label: 'Редактировать', action: () => { navigate('/recipe/' + menuId + '/edit'); setMenuId(null) }, color: 'var(--text)' },
+              { icon: <Trash2  size={18} />, label: 'Удалить',        action: () => handleDelete(menuId),                                        color: 'var(--red)' },
+            ].map(({ icon, label, action, color }) => (
+              <button key={label} onClick={action} style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+                padding: '16px 24px', background: 'none', border: 'none', cursor: 'pointer',
+                color, fontSize: 16, fontWeight: 600, fontFamily: 'inherit'
+              }}>
+                {icon} {label}
+              </button>
+            ))}
+            <button onClick={() => setMenuId(null)} style={{
+              width: '100%', padding: '16px 24px', background: 'none', border: 'none',
+              cursor: 'pointer', color: 'var(--text3)', fontSize: 16, fontFamily: 'inherit'
+            }}>Отмена</button>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
         {displayRecipes.map(r => (
-          <div key={r.id} onClick={() => navigate('/recipe/' + r.id)}
-               style={{ aspectRatio: '1/1', overflow: 'hidden', cursor: 'pointer', background: 'var(--bg3)' }}>
+          <div key={r.id} onClick={() => tab === 'recipes' && menuId ? null : navigate('/recipe/' + r.id)}
+               style={{ aspectRatio: '1/1', overflow: 'hidden', cursor: 'pointer', background: 'var(--bg3)', position: 'relative' }}>
             <img src={r.image_url} alt={r.title}
                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+            {tab === 'recipes' && (
+              <button onClick={e => { e.stopPropagation(); setMenuId(r.id) }} style={{
+                position: 'absolute', top: 4, right: 4,
+                width: 28, height: 28, borderRadius: 8,
+                background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
+                border: 'none', color: '#fff', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <MoreHorizontal size={15} />
+              </button>
+            )}
           </div>
         ))}
         {displayRecipes.length === 0 && (

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Heart, Send, CornerDownRight } from 'lucide-react'
 import { getComments, addComment, toggleCommentLike, getCommentLikes, addNotification } from '../lib/api'
+import { withSync } from '../lib/syncQueue'
 import { useRealtimeQuery } from '../hooks/useRealtimeQuery'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -80,20 +81,15 @@ export default function CommentsSheet({ recipeId, recipeAuthorId, onClose }) {
     const t = text.trim()
     if (!t) return
     if (!userId) { toast('Войдите, чтобы оставить комментарий', 'error'); return }
+    const payload = { recipeId, authorId: userId, text: t, parentId: replyTo?.id || null }
     try {
-      await addComment({ recipeId, authorId: userId, text: t, parentId: replyTo?.id || null })
-      if (recipeAuthorId && recipeAuthorId !== userId) {
-        addNotification({
-          userId: recipeAuthorId,
-          type: 'comment',
-          fromUserId: userId,
-          recipeId,
-          text: `прокомментировал(а): «${t.slice(0, 40)}»`,
-        }).catch(() => {})
+      await withSync('addComment', payload, () => addComment(payload))
+      if (navigator.onLine && recipeAuthorId && recipeAuthorId !== userId) {
+        addNotification({ userId: recipeAuthorId, type: 'comment', fromUserId: userId, recipeId, text: `прокомментировал(а): «${t.slice(0, 40)}»` }).catch(() => {})
       }
       setText('')
       setReplyTo(null)
-      toast('Комментарий добавлен ✓', 'success')
+      toast(navigator.onLine ? 'Комментарий добавлен ✓' : 'Офлайн — отправим когда появится сеть', 'success')
       setTimeout(() => listRef.current?.scrollTo({ top: 999999, behavior: 'smooth' }), 100)
     } catch {
       toast('Ошибка при добавлении', 'error')

@@ -12,7 +12,9 @@ import RecipeDetail from './pages/RecipeDetail'
 import Notifications from './pages/Notifications'
 import SignIn from './pages/SignIn'
 import UserProfile from './pages/UserProfile'
+import EditRecipe from './pages/EditRecipe'
 import OfflineBanner from './components/OfflineBanner'
+import { startSyncListener } from './lib/syncQueue'
 
 function RequireAuth({ children }) {
   const { isAuth } = useAuth()
@@ -33,10 +35,13 @@ function AppRoutes() {
       <Route path="/notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
       <Route path="/recipe/:id"    element={<RequireAuth><RecipeDetail /></RequireAuth>} />
       <Route path="/profile/:id"   element={<RequireAuth><UserProfile /></RequireAuth>} />
+      <Route path="/recipe/:id/edit" element={<RequireAuth><EditRecipe /></RequireAuth>} />
       <Route path="*"              element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
+
+startSyncListener()
 
 export default function App() {
   return (
